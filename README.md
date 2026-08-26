@@ -1,6 +1,6 @@
 # AI Social Agent
 
-An AI agent for social media management — listening, creator discovery, multi-platform publishing, and trend research across X, Instagram, TikTok, Reddit, and YouTube — backed by real social-data APIs.
+An AI agent for social media management — listening, creator discovery, multi-platform publishing, and trend research across X, Instagram, TikTok, Reddit, YouTube, Facebook, LinkedIn, Threads, and Pinterest — backed by real social-data APIs.
 
 Part of [Agency Agents OS](https://github.com/Anil-matcha/agency-agents-os), an open ecosystem of specialized AI agents for real business work.
 
@@ -14,14 +14,21 @@ This repo is the umbrella for anything an agency or in-house team would call "th
 |---|---|---|
 | [Social Listening](agents/social-listening/SKILL.md) | Monitor brand/topic mentions and sentiment across platforms | Coming Soon |
 | [Creator Discovery](agents/creator-discovery/SKILL.md) | Find relevant creators/influencers for a campaign by niche and audience fit | Coming Soon |
-| [Multi-Platform Publishing](agents/multi-platform-publishing/SKILL.md) | Adapt and schedule one piece of content across multiple platforms with platform-appropriate formatting | Coming Soon |
+| [Multi-Platform Publishing](agents/multi-platform-publishing/SKILL.md) | Adapt and schedule one media post across YouTube, TikTok, Instagram, Facebook, LinkedIn, X, Threads, and Pinterest | Blueprint |
 | [Trend Discovery](agents/trend-discovery/SKILL.md) | Surface what's currently working/trending in a niche to inform content strategy | Coming Soon |
 | [Platform Research](agents/platform-research/SKILL.md) | Deep research on a platform's community/subreddit/audience before launching content there | Coming Soon |
 
 ## Required Muapi APIs
 
-- `social.read_posts` — pull posts/mentions/comments for a brand, topic, or account across supported platforms.
-- `social.publish_post` — publish or schedule a post to a connected platform account.
+Live today:
+
+- `social.list_accounts` (`GET /social/accounts`) — list the user's connected social accounts.
+- `social.publish` (`POST /social/publish`) — publish or schedule a media post (image/video required) to a connected account on YouTube, TikTok, Instagram, Facebook, LinkedIn, X, Threads, or Pinterest.
+- Scheduled-post management: `GET /social/posts`, `PATCH /social/posts/{id}`, `DELETE /social/posts/{id}`.
+
+Not yet live (needed by the other four sub-agents):
+
+- `social.read_posts` — pull posts/mentions/comments for a brand, topic, or account.
 - `social.search_creators` — search creators/accounts by niche, audience size, and engagement signals.
 - `social.sentiment_analysis` — classify sentiment and surface themes across a set of posts/mentions.
 
@@ -54,11 +61,11 @@ Drop a sub-agent's `SKILL.md` into a Claude Code project's `.claude/skills/` dir
 
 ## Read-only vs. write actions
 
-Social listening, creator discovery, trend discovery, and platform research are `read-only` — they surface information, they don't post anything. Multi-platform publishing is `requires-approval-to-publish` — a draft is prepared for each platform, but nothing goes out until a human explicitly approves it.
+Social listening, creator discovery, trend discovery, and platform research are `read-only` — they surface information, they don't post anything. Multi-platform publishing is `requires-approval-to-publish` — a draft is prepared for each platform, but nothing is published or scheduled until a human explicitly approves it.
 
 ## Status and limitations
 
-All five sub-agents are Coming Soon. They depend on the `social.*` capabilities above, which are not yet live on Muapi. Each `SKILL.md` documents the intended workflow and API surface so integration can start as soon as those capabilities ship, and explains exactly how the agent should fail (not fabricate data) until then.
+Multi-Platform Publishing is **Blueprint** — built on `social.list_accounts` and `social.publish`, both live on Muapi today, but not yet verified end-to-end from inside this repo. Note it publishes to eight platforms, not Reddit (Reddit isn't a supported publish target on Muapi's social API — it's still useful for Platform Research). The other four sub-agents are **Coming Soon** — they depend on `social.read_posts`, `social.search_creators`, and `social.sentiment_analysis`, none of which are live yet.
 
 ## Contributing
 
