@@ -7,6 +7,7 @@ Part of [Agency Agents OS](https://github.com/Anil-matcha/agency-agents-os), an 
 ## Related Projects
 
 - [Agency Agents OS](https://github.com/Anil-matcha/agency-agents-os) — the central catalog this repo is part of.
+- [ai-youtube-agent](https://github.com/SamurAIGPT/ai-youtube-agent) — uses this repo's `social.publish` capability to actually upload optimized videos to YouTube.
 - [ai-content-repurposing-agent](https://github.com/SamurAIGPT/ai-content-repurposing-agent) — feeds this repo's multi-platform-publishing sub-agent with clipped video.
 - [ai-image-agent](https://github.com/SamurAIGPT/ai-image-agent) — supplies image posts for this repo to publish.
 - [ai-marketing-agent](https://github.com/SamurAIGPT/ai-marketing-agent) — plans the campaigns this repo publishes and monitors.
