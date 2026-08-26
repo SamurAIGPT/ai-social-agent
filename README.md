@@ -4,6 +4,17 @@ An AI agent for social media management — listening, creator discovery, multi-
 
 Part of [Agency Agents OS](https://github.com/Anil-matcha/agency-agents-os), an open ecosystem of specialized AI agents for real business work.
 
+## Related Projects
+
+- [Agency Agents OS](https://github.com/Anil-matcha/agency-agents-os) — the central catalog this repo is part of.
+- [ai-content-repurposing-agent](https://github.com/SamurAIGPT/ai-content-repurposing-agent) — feeds this repo's multi-platform-publishing sub-agent with clipped video.
+- [ai-image-agent](https://github.com/SamurAIGPT/ai-image-agent) — supplies image posts for this repo to publish.
+- [ai-marketing-agent](https://github.com/SamurAIGPT/ai-marketing-agent) — plans the campaigns this repo publishes and monitors.
+- [ai-reputation-agent](https://github.com/SamurAIGPT/ai-reputation-agent) — shares this repo's sentiment/listening data sources.
+- [MuAPI MCP docs](https://muapi.ai/docs/mcp) — connect this repo's `SKILL.md` files via MCP.
+- [MuAPI API reference](https://muapi.ai/docs/api-reference) — request/poll pattern used by the live `social.publish` endpoint.
+- [MuAPI access keys](https://muapi.ai/access-keys) — create the API key this agent needs.
+
 ## What this covers
 
 This repo is the umbrella for anything an agency or in-house team would call "the AI social agent": knowing what's being said about a brand or topic, finding the right creators to work with, adapting one piece of content for each platform's format, and understanding what's currently working in a niche — without manually monitoring five different apps.
