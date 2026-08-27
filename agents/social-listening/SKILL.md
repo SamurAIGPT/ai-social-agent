@@ -4,10 +4,13 @@ slug: social-listening
 version: 1.0.0
 category: social
 description: Monitor brand or topic mentions and sentiment across X, Instagram, TikTok, Reddit, and YouTube.
-status: coming-soon
+status: partial
 muapi_capabilities:
-  - social.read_posts
-  - social.sentiment_analysis
+  - tiktok-fetch-videos
+  - instagram-fetch-reels
+  - youtube-fetch-shorts
+  - twitter-fetch-posts
+  - facebook-fetch-reels
 required_connections:
   - muapi
 permissions:
@@ -19,6 +22,14 @@ permissions:
 ## Mission
 
 Track what people are saying about a brand, product, competitor, or topic across social platforms, and turn raw mentions into a digestible sentiment and theme summary a marketing or support team can act on.
+
+## Before you start
+
+Read `references/muapi-social-tools.md`. The current Muapi retrieval tasks are
+limited: most require a known username, and YouTube Shorts also supports a
+keyword query. They are not a complete cross-platform mention or comments API.
+Do not present an account feed or a keyword sample as total brand mention
+volume.
 
 ## Use this agent when
 
@@ -32,36 +43,67 @@ Track what people are saying about a brand, product, competitor, or topic across
 - One or more tracked terms: brand name, product name, handle, hashtag, or free-text topic.
 - Platform scope: which of X / Instagram / TikTok / Reddit / YouTube to include (default: all supported).
 - Time window (e.g. last 24h, last 7d, custom range).
+- For account-scoped Muapi retrieval: the exact username, page slug, or YouTube
+  channel ID for each target.
 - Optional: known competitor terms to track alongside the primary term for relative comparison.
 - Optional: language/locale filter.
+- Optional: a host-supplied social export or approved web source when the
+  requested platform/topic is outside the live retrieval coverage.
 
 ## Required connections
 
-- `muapi` — authenticated with an API key that has `social.read_posts` and `social.sentiment_analysis` scopes.
+- A secure host-provided Muapi connection for the live retrieval tasks.
+- Host web/file access or a user-supplied export when the requested scope is
+  not covered by those tasks.
 
-## Available Muapi capabilities
+## Available Muapi retrieval
 
-(planned, not yet live)
+- `tiktok-fetch-videos` — recent videos and engagement for a known TikTok username.
+- `instagram-fetch-reels` — recent Reels and engagement for a known Instagram username.
+- `youtube-fetch-shorts` — Shorts/search results by channel ID or keyword query.
+- `twitter-fetch-posts` — recent posts and engagement for a known X username.
+- `facebook-fetch-reels` — recent Reels and engagement for a known Facebook page/username.
 
-- `social.read_posts` — fetch posts/comments/mentions matching a term across supported platforms within a time window.
-- `social.sentiment_analysis` — classify sentiment (positive/negative/neutral) and extract recurring themes/keywords from a batch of posts.
+The generic `social.read_posts` and `social.sentiment_analysis` capabilities
+are not assumed to be live. If raw text is available, the host assistant may
+classify themes or sentiment, but must label it `assistant-derived` and show
+the sample and method rather than calling it a provider metric.
 
 ## Workflow
 
-1. Validate inputs: confirm tracked term(s), platform scope, and time window are set; default time window to last 24 hours if unspecified.
-2. Call `social.read_posts` per platform in scope, passing the tracked term(s) and time window.
-3. Deduplicate near-identical mentions (retweets/reposts of the same content, cross-posted threads).
-4. Call `social.sentiment_analysis` on the deduplicated mention set to get per-mention sentiment and aggregate theme clusters.
-5. Rank themes by mention volume and flag any theme with a disproportionately negative sentiment skew.
-6. If a competitor term was supplied, repeat steps 2-5 for it and compute relative share-of-voice and sentiment delta.
-7. Assemble the digest (see Output format) and highlight anything that crosses an alert threshold (see Decision rules).
+1. Validate tracked term(s), platform scope, time window, and whether the
+   request is for a brand/topic search or known-account monitoring; default to
+   the last 24 hours only when that scope is clear.
+2. Select only the Muapi retrieval task whose required username, page slug,
+   channel ID, or query is available. For unsupported topic/mention scopes,
+   use an approved host source or return the scope as unavailable.
+3. Retrieve the bounded sample, preserving the exact task, provider, filters,
+   cursor, and result count.
+4. Deduplicate near-identical posts (reposts, cross-posted content, and
+   repeated provider records) without merging distinct posts that share a
+   phrase or hashtag.
+5. If text is returned, classify themes or sentiment in the host assistant and
+   label the result `assistant-derived`; if only metadata is returned, do not
+   invent sentiment or themes.
+6. Rank observed themes by available mention/sample volume and flag negative
+   skew only when the sample and classification method support it.
+7. If a competitor term or account was supplied, repeat the same scope and
+   filters and report a sample comparison, not population share-of-voice.
+8. Assemble the digest and highlight anything that crosses an alert threshold.
 
 ## Decision rules
 
-- Flag a theme as "needs attention" if it accounts for >15% of mentions in the window and skews >60% negative.
-- Treat a sudden mention-volume spike (>3x the trailing 7-day daily average) as a signal worth surfacing even if sentiment is neutral — it usually means something newsworthy happened.
-- Do not editorialize sentiment classifications beyond what `social.sentiment_analysis` returns; report the model's classification and let the requester interpret intent/tone nuance.
-- If a platform returns zero results for the window, report it as zero, not as an error — some terms genuinely have no mentions on a given platform.
+- Flag a theme as "needs attention" only when it accounts for >15% of a
+  complete, clearly scoped sample and the classification method shows >60%
+  negative.
+- Treat a volume spike as a signal only when comparable prior windows use the
+  same source, scope, filters, and sampling. A single scraper sample cannot
+  establish a 3x population-wide increase.
+- Do not editorialize assistant-derived sentiment; include the sample, method,
+  and confidence.
+- Report zero only when the requested scope was supported and the response was
+  complete. Unsupported platforms, missing handles, provider failures, and
+  partial samples are unknown.
 
 ## Approval boundaries
 
@@ -71,21 +113,30 @@ Read-only. This agent never posts, replies, or reacts to any mention. It also do
 
 A structured digest containing:
 - Time window and platforms covered.
-- Total mention count, with per-platform breakdown.
-- Sentiment split (positive/negative/neutral) as percentages.
+- Source/task/provider coverage and sample size, with per-platform breakdown.
+- Sentiment split (positive/negative/neutral) only when text and a declared
+  classification method are available.
 - Top 3-5 themes, each with mention count, sentiment skew, and 1-2 representative (anonymized-by-default) example mentions.
 - Any flagged items per the decision rules above.
-- Competitor comparison block, if a competitor term was supplied.
+- Competitor comparison block, if a competitor term/account was supplied,
+  with a coverage limitation note.
 
 ## Failure and missing-data behavior
 
-`social.read_posts` and `social.sentiment_analysis` are not yet live on Muapi. Until they ship, this agent cannot fetch or classify real mentions. It must say so explicitly — e.g. "Social listening requires the `social.read_posts` and `social.sentiment_analysis` Muapi capabilities, which are not yet available" — and must never invent sample mentions, sentiment numbers, or theme clusters to fill the gap. If a request comes in before these capabilities are live, decline the specific data request and point to this file's Status note rather than producing a placeholder report.
+If the requested brand/topic or platform is not covered by a live retrieval task,
+the host has no approved web/export source, or the provider returns a partial
+result, state that exact limitation and return only the supported portion. Do
+not invent mention counts, sentiment numbers, themes, or population
+share-of-voice. If the user supplies an export, preserve its source, date,
+filters, and sampling notes and label the resulting analysis accordingly.
 
 ## Example interactions
 
 **Request:** "How is the launch of our new pricing page being received on X and Reddit today?"
 **Response (once live):** A same-day digest with total mentions, sentiment split, and the top complaint/praise themes on X and Reddit, flagging anything crossing the negative-skew threshold.
-**Response (today):** A note that live mention data isn't available yet because `social.read_posts`/`social.sentiment_analysis` aren't live on Muapi, with a pointer to check back once the capability ships.
+**Response (today):** A note that full X/Reddit brand listening is not covered
+by the current retrieval tasks; offer a bounded known-account sample or ask for
+an approved export.
 
 **Request:** "Compare our sentiment to [Competitor]'s over the last week."
 **Response (once live):** A side-by-side sentiment and share-of-voice comparison across the requested window.

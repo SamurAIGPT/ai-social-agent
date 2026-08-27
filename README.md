@@ -1,6 +1,6 @@
 # AI Social Agent
 
-An AI agent for social media management — listening, creator discovery, multi-platform publishing, and trend research across X, Instagram, TikTok, Reddit, YouTube, Facebook, LinkedIn, Threads, and Pinterest — backed by real social-data APIs.
+An AI agent for social media management — listening, creator discovery, multi-platform publishing, and trend research across X, Instagram, TikTok, Reddit, YouTube, Facebook, LinkedIn, Threads, and Pinterest — backed by a secure host-provided Muapi connection and clearly scoped social data.
 
 Part of [Agency Agents OS](https://github.com/Anil-matcha/agency-agents-os), an open ecosystem of specialized AI agents for real business work.
 
@@ -14,7 +14,7 @@ Part of [Agency Agents OS](https://github.com/Anil-matcha/agency-agents-os), an 
 - [ai-reputation-agent](https://github.com/SamurAIGPT/ai-reputation-agent) — shares this repo's sentiment/listening data sources.
 - [MuAPI MCP docs](https://muapi.ai/docs/mcp) — connect this repo's `SKILL.md` files via MCP.
 - [MuAPI API reference](https://muapi.ai/docs/api-reference) — request/poll pattern used by the live `social.publish` endpoint.
-- [MuAPI access keys](https://muapi.ai/access-keys) — create the API key this agent needs.
+- MuAPI access — configure the connection and credentials through the host assistant's secure settings.
 
 ## What this covers
 
@@ -24,33 +24,39 @@ This repo is the umbrella for anything an agency or in-house team would call "th
 
 | Agent | Does | Status |
 |---|---|---|
-| [Social Listening](agents/social-listening/SKILL.md) | Monitor brand/topic mentions and sentiment across platforms | Coming Soon |
-| [Creator Discovery](agents/creator-discovery/SKILL.md) | Find relevant creators/influencers for a campaign by niche and audience fit | Coming Soon |
+| [Social Project Setup](agents/social-project-setup/SKILL.md) | Establish brand, account, campaign, approval, and measurement context | Ready |
+| [Social Listening](agents/social-listening/SKILL.md) | Monitor brand/topic mentions and sentiment across platforms | Partial — scoped retrieval only |
+| [Creator Discovery](agents/creator-discovery/SKILL.md) | Find relevant creators/influencers for a campaign by niche and audience fit | Partial — candidate validation only |
 | [Multi-Platform Publishing](agents/multi-platform-publishing/SKILL.md) | Adapt and schedule one media post across YouTube, TikTok, Instagram, Facebook, LinkedIn, X, Threads, and Pinterest | Blueprint |
-| [Trend Discovery](agents/trend-discovery/SKILL.md) | Surface what's currently working/trending in a niche to inform content strategy | Coming Soon |
-| [Platform Research](agents/platform-research/SKILL.md) | Deep research on a platform's community/subreddit/audience before launching content there | Coming Soon |
+| [Trend Discovery](agents/trend-discovery/SKILL.md) | Surface what's currently working/trending in a niche to inform content strategy | Partial — limited platform/query coverage |
+| [Platform Research](agents/platform-research/SKILL.md) | Deep research on a platform's community/subreddit/audience before launching content there | Partial — host web/data required |
 
-## Required Muapi APIs
+## Muapi capability status
 
-Live today:
+Live account and publishing surfaces include:
 
-- `social.list_accounts` (`GET /social/accounts`) — list the user's connected social accounts.
-- `social.publish` (`POST /social/publish`) — publish or schedule a media post (image/video required) to a connected account on YouTube, TikTok, Instagram, Facebook, LinkedIn, X, Threads, or Pinterest.
+- `social.list_accounts` (`GET /social/accounts`) — list connected social accounts and their connection state.
+- `social.publish` (`POST /social/publish`) — publish or schedule one media item to one connected account.
 - Scheduled-post management: `GET /social/posts`, `PATCH /social/posts/{id}`, `DELETE /social/posts/{id}`.
+- Platform-specific publish tasks for YouTube, TikTok, Instagram, Facebook, LinkedIn, X, Threads, and Pinterest, subject to runtime account/provider availability.
+- Narrow public retrieval tasks for TikTok profiles/videos, Instagram Reels, YouTube Shorts, X posts, and Facebook Reels.
 
-Not yet live (needed by the other four sub-agents):
+The current retrieval tasks do not provide complete cross-platform brand
+listening, creator discovery, community feeds, or provider-returned sentiment.
+The generic `social.read_posts`, `social.search_creators`, and
+`social.sentiment_analysis` names must not be called unless the host exposes a
+verified implementation. See [the capability map](references/muapi-social-tools.md)
+for task/provider coverage and safe fallbacks.
 
-- `social.read_posts` — pull posts/mentions/comments for a brand, topic, or account.
-- `social.search_creators` — search creators/accounts by niche, audience size, and engagement signals.
-- `social.sentiment_analysis` — classify sentiment and surface themes across a set of posts/mentions.
-
-See each sub-agent's `SKILL.md` for the specific capabilities it uses.
+Owned-account reach, impressions, audience demographics, conversions, and
+revenue require platform-native analytics or GA4/other analytics supplied by
+the host. Public post metrics are not a substitute.
 
 ## Setup
 
-1. Create a Muapi account and API key at [muapi.ai](https://muapi.ai).
-2. Review the [Muapi API quickstart](https://muapi.ai) and [OpenAPI schema](https://api.muapi.ai/openapi.json) for the social-data endpoints.
-3. Load the `SKILL.md` for the sub-agent you need into your agent runtime (hosted agent, MCP client, or custom LLM app), or follow it manually.
+1. Configure the Muapi connection in the host assistant's secure settings; never paste an API key into a prompt, repository, or `.social/` artifact.
+2. Connect the required platform accounts through the host/Muapi OAuth flow when publishing is needed.
+3. Read `AGENTS.md`, then load the `SKILL.md` for the sub-agent you need into your agent runtime (hosted agent, MCP client, or custom LLM app), or follow it manually.
 
 
 ## Using with an AI agent
@@ -59,13 +65,13 @@ Every sub-agent's `SKILL.md` is model- and runtime-agnostic — it's plain Markd
 
 **As an MCP connection (the agent gets live Muapi tools):**
 
-Muapi runs an MCP server at `https://api.muapi.ai/mcp` that any MCP-compatible client can connect to — Cursor, Windsurf, Claude, or your own custom agent.
+Muapi runs an MCP server that the host assistant can connect to through its
+secure connector settings. Use the host's supported header or
+environment-variable mechanism; do not embed keys in connector URLs, skill
+files, prompts, logs, or project artifacts.
 
-- **Cursor / Windsurf / other clients with a header field:** connect to `https://api.muapi.ai/mcp` with an `Authorization: Bearer YOUR_MUAPI_KEY` header.
-- **claude.ai / Claude Cowork / other connector UIs with no header field:** use the URL-embedded key form instead, `https://api.muapi.ai/mcp/YOUR_MUAPI_KEY`, via Settings → Connectors → Add custom connector.
-- **Claude Code / Claude Desktop:** `claude mcp add muapi -e MUAPI_API_KEY=YOUR_MUAPI_KEY -- muapi mcp serve` (uses the muapi CLI's stdio transport — Claude Code's HTTP MCP client doesn't reliably inject tools).
-
-Full setup details for every client: [muapi.ai/docs/mcp](https://muapi.ai/docs/mcp).
+The host should expose only the capabilities and account scope the requester
+has authorized.
 
 **As agent instructions (any LLM follows the workflow directly):**
 
@@ -73,11 +79,21 @@ Drop a sub-agent's `SKILL.md` into a Claude Code project's `.claude/skills/` dir
 
 ## Read-only vs. write actions
 
-Social listening, creator discovery, trend discovery, and platform research are `read-only` — they surface information, they don't post anything. Multi-platform publishing is `requires-approval-to-publish` — a draft is prepared for each platform, but nothing is published or scheduled until a human explicitly approves it.
+Social listening, creator discovery, trend discovery, platform research, and
+analytics review are `read-only` — they surface information, they don't post
+anything. Multi-platform publishing is `requires-approval-to-publish` — a
+draft is prepared for each platform, but nothing is published or scheduled
+until a human explicitly approves it.
 
 ## Status and limitations
 
-Multi-Platform Publishing is **Blueprint** — built on `social.list_accounts` and `social.publish`, both live on Muapi today, but not yet verified end-to-end from inside this repo. Note it publishes to eight platforms, not Reddit (Reddit isn't a supported publish target on Muapi's social API — it's still useful for Platform Research). The other four sub-agents are **Coming Soon** — they depend on `social.read_posts`, `social.search_creators`, and `social.sentiment_analysis`, none of which are live yet.
+Multi-Platform Publishing is **Blueprint** — built on `social.list_accounts` and
+`social.publish`, with platform-specific publish tasks available subject to
+runtime account/provider status. It publishes to eight target platforms, not
+Reddit. The other research sub-agents have partial public retrieval coverage,
+but complete listening, creator discovery, community research, and provider
+sentiment still require capabilities or host-supplied data beyond the current
+Muapi surface.
 
 ## Contributing
 

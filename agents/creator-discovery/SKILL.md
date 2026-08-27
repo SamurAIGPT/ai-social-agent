@@ -4,10 +4,14 @@ slug: creator-discovery
 version: 1.0.0
 category: social
 description: Find relevant creators and influencers for a campaign by niche, audience fit, and engagement signals.
-status: coming-soon
+status: partial
 muapi_capabilities:
-  - social.search_creators
-  - social.read_posts
+  - tiktok-fetch-profile
+  - tiktok-fetch-videos
+  - instagram-fetch-reels
+  - youtube-fetch-shorts
+  - twitter-fetch-posts
+  - facebook-fetch-reels
 required_connections:
   - muapi
 permissions:
@@ -19,6 +23,13 @@ permissions:
 ## Mission
 
 Given a campaign brief — niche, target audience, budget tier, platform — surface a shortlist of creators whose content, audience, and engagement patterns genuinely fit, instead of a generic follower-count list.
+
+## Before you start
+
+Read `references/muapi-social-tools.md`. The current Muapi surface does not
+provide generic creator search. The live scraper tasks can validate a
+user-supplied candidate list or known accounts; they cannot discover unknown
+creators across a niche.
 
 ## Use this agent when
 
@@ -35,34 +46,59 @@ Given a campaign brief — niche, target audience, budget tier, platform — sur
 - Optional: target audience demographics/geography.
 - Optional: reference creators to find lookalikes of.
 - Optional: minimum engagement-rate threshold.
+- For validation mode: candidate handles, profile URLs, or YouTube channel IDs
+  supplied by the user or host.
 
 ## Required connections
 
-- `muapi` — authenticated with an API key that has `social.search_creators` and `social.read_posts` scopes.
+- A secure host-provided Muapi connection for validating known accounts.
+- A host-supplied candidate export or approved web source when discovery is
+  needed.
 
-## Available Muapi capabilities
+## Available Muapi validation tasks
 
-(planned, not yet live)
+- `tiktok-fetch-profile` — profile name and follower count for a known TikTok username.
+- `tiktok-fetch-videos` — recent TikTok content and engagement for that username.
+- `instagram-fetch-reels` — recent Instagram Reels for a known username.
+- `youtube-fetch-shorts` — Shorts/search evidence for a known channel ID or query.
+- `twitter-fetch-posts` — recent X content for a known username.
+- `facebook-fetch-reels` — recent Facebook Reels for a known page/username.
 
-- `social.search_creators` — search creator/account profiles by niche keywords, platform, audience size, and engagement signals.
-- `social.read_posts` — pull a creator's recent posts to verify content fit and current activity level.
+The generic `social.search_creators` and `social.read_posts` capabilities are
+not assumed to be live. Do not turn a keyword search result or a supplied
+candidate list into a claim that the market-wide creator universe was
+searched.
 
 ## Workflow
 
-1. Confirm niche, platform(s), and audience-size tier are specified; ask for clarification only if the brief is too vague to search meaningfully (e.g. no niche and no reference creators at all).
-2. Call `social.search_creators` with the niche, platform, and audience-size filters.
-3. If reference creators were supplied, run a lookalike pass against their audience/content profile and merge results.
-4. For each candidate, call `social.read_posts` to sample recent content and confirm the creator is still active and on-topic (not a dormant or pivoted account).
-5. Filter out candidates below the minimum engagement-rate threshold, if one was supplied.
-6. Score remaining candidates on niche fit, audience-size fit, recent activity, and engagement rate.
-7. Return a ranked shortlist with the reasoning for each inclusion (see Output format).
+1. Confirm niche, platform(s), audience-size tier, and whether the request is
+   discovery mode or validation mode.
+2. If no candidate list, known handles, channel IDs, approved export, or web
+   source is available, report that creator discovery is unavailable on the
+   current Muapi surface instead of fabricating a shortlist.
+3. For each supplied candidate, call only the platform task matching the
+   supplied username, page slug, or channel ID. Use `tiktok-fetch-profile`
+   when an observed TikTok follower count is needed, then fetch recent content
+   where supported.
+4. If reference creators were supplied, compare content signals only against
+   the validated sample; do not claim a market-wide lookalike search.
+5. Filter candidates below the requested threshold only when the required
+   metric is present and comparable. Mark missing metrics as unavailable.
+6. Score remaining candidates on observed niche fit, audience-size evidence,
+   recent activity, and available engagement. Label host- or
+   assistant-derived calculations.
+7. Return a ranked validation shortlist with the reasoning and coverage limits.
 
 ## Decision rules
 
 - Prefer creators with consistent posting cadence (active in the last 30 days) over larger but dormant accounts.
 - Engagement rate matters more than raw follower count when ranking within the same audience-size tier.
+- Do not imply follower counts or audience demographics for platforms/tasks that
+  did not return them. Public post engagement is not owned-account analytics.
 - Do not include a creator whose recent content has drifted away from the requested niche, even if historical content matches — flag them separately as "past fit, currently off-niche" rather than silently dropping them.
-- When budget tier isn't specified, bias the shortlist toward micro/mid-tier creators, which tend to offer better cost-per-engagement for most campaigns; note this assumption explicitly in the output.
+- When budget tier isn't specified, bias a validation shortlist toward
+  micro/mid-tier candidates only as an explicit planning assumption; do not
+  describe it as a measured cost advantage without cost data.
 
 ## Approval boundaries
 
@@ -72,20 +108,29 @@ Read-only. This agent never contacts, DMs, or reaches out to a creator on the br
 
 A ranked shortlist, each entry including:
 - Creator handle/platform.
-- Audience-size tier and approximate engagement rate.
+- Audience-size tier and approximate engagement rate only when observed or
+  calculated from sufficient data.
 - Niche-fit rationale (why this creator matches the brief).
 - Recent-activity note (last post date, content trend).
-- Any caveats (e.g. "past fit, currently off-niche," "engagement rate estimated from limited sample").
+- Source/task/provider and any caveats (e.g. "past fit, currently off-niche,"
+  "candidate validation only," "engagement rate estimated from limited
+  sample").
 
 ## Failure and missing-data behavior
 
-`social.search_creators` and `social.read_posts` are not yet live on Muapi. Until they ship, this agent cannot search real creator profiles or verify engagement data. It must state this directly — e.g. "Creator discovery requires the `social.search_creators` Muapi capability, which is not yet available" — and must never invent creator handles, follower counts, or engagement figures. Decline the specific search request and reference this file's Status note instead of producing a fabricated shortlist.
+Full creator discovery is unavailable unless the host exposes a verified search
+capability or supplies a candidate dataset. With only the current Muapi tasks,
+offer known-candidate validation and state which platforms and metrics were not
+covered. Never invent creator handles, follower counts, audience data, or
+engagement figures.
 
 ## Example interactions
 
 **Request:** "Find 10 micro-influencers in the sustainable home goods niche on Instagram with engagement rate above 3%."
 **Response (once live):** A ranked shortlist of 10 creators meeting the niche, platform, and engagement-rate criteria, each with rationale.
-**Response (today):** A note that creator search isn't available yet because `social.search_creators` isn't live on Muapi.
+**Response (today):** A note that no market-wide creator search is available;
+ask for candidate handles or an approved creator export and offer to validate
+their fit.
 
 **Request:** "Find creators similar to [reference creator] on TikTok."
 **Response (once live):** A lookalike shortlist based on the reference creator's audience and content profile.

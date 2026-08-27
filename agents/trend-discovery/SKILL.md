@@ -4,10 +4,13 @@ slug: trend-discovery
 version: 1.0.0
 category: social
 description: Surface what's currently working or trending in a niche to inform content strategy.
-status: coming-soon
+status: partial
 muapi_capabilities:
-  - social.read_posts
-  - social.sentiment_analysis
+  - tiktok-fetch-videos
+  - instagram-fetch-reels
+  - youtube-fetch-shorts
+  - twitter-fetch-posts
+  - facebook-fetch-reels
 required_connections:
   - muapi
 permissions:
@@ -19,6 +22,14 @@ permissions:
 ## Mission
 
 Identify what's currently gaining traction in a given niche or platform — formats, topics, sounds, hashtags, or specific posts — so a content team can inform their strategy with real, current signal instead of guesswork.
+
+## Before you start
+
+Read `references/muapi-social-tools.md`. Trend coverage is partial. YouTube
+Shorts supports a keyword query, while the current TikTok, Instagram, X, and
+Facebook retrieval tasks are primarily account-scoped. A generic
+cross-platform trend or hashtag search requires an additional host-provided
+source.
 
 ## Use this agent when
 
@@ -33,33 +44,60 @@ Identify what's currently gaining traction in a given niche or platform — form
 - Target platform(s).
 - Time window (e.g. last 48h, last week) — trend discovery skews toward recent windows by default.
 - Optional: format filter (e.g. "short-form video only," "text posts only").
+- For account-scoped retrieval: usernames, page slugs, or channel IDs.
+- Optional: host-supplied platform export or approved web/social-data source for
+  unsupported discovery scope.
 
 ## Required connections
 
-- `muapi` — authenticated with an API key that has `social.read_posts` and `social.sentiment_analysis` scopes.
+- A secure host-provided Muapi connection for live retrieval tasks.
+- A host-supplied export or approved web/social-data source for global trend
+  discovery outside the live task scope.
 
-## Available Muapi capabilities
+## Available Muapi retrieval
 
-(planned, not yet live)
+- `youtube-fetch-shorts` — keyword or channel-scoped Shorts results with
+  sorting and date filters.
+- `tiktok-fetch-videos` — recent videos for a known username with optional
+  hashtag, date, and engagement filters.
+- `instagram-fetch-reels` — recent Reels for a known username with optional
+  hashtag, date, and engagement filters.
+- `twitter-fetch-posts` — recent posts for a known X username.
+- `facebook-fetch-reels` — recent Reels for a known Facebook page/username.
 
-- `social.read_posts` — fetch top/recent posts matching a niche or keyword set within a time window, including engagement metrics.
-- `social.sentiment_analysis` — surface theme clusters across a batch of posts, useful for grouping trending posts by topic/format.
+The generic `social.read_posts` and `social.sentiment_analysis` capabilities
+are not assumed to be live. The host assistant may cluster returned text and
+metadata, but must label the classification `assistant-derived`.
 
 ## Workflow
 
-1. Confirm niche/keywords, platform(s), and time window; default to the last 48 hours if unspecified, since trend relevance decays fast.
-2. Call `social.read_posts` scoped to the niche/keywords and time window, sorted by engagement velocity where the API supports it.
-3. Cluster results by format (short-form video, carousel, text thread, etc.) and by recurring topic/hook, using `social.sentiment_analysis` theme output to assist clustering.
-4. Rank clusters by combined engagement volume and rate-of-growth (how fast engagement is accumulating relative to post age), not just raw totals.
-5. For each top cluster, extract the common pattern (hook structure, format, audio/visual style, posting cadence) rather than just listing individual posts.
-6. Present the ranked trend clusters with concrete examples (see Output format).
+1. Confirm niche/keywords, platform(s), time window, and whether discovery is
+   global or limited to known accounts; default to the last 48 hours only when
+   the source supports that date window.
+2. Select `youtube-fetch-shorts` for keyword discovery or the matching
+   account-scoped task for known creators/pages. For unsupported global scope,
+   use an approved host source or report the gap.
+3. Retrieve a bounded sample, preserving task, provider, filters, cursor,
+   sorting, and result count.
+4. Cluster results by format and recurring topic/hook using returned text and
+   metadata. Label host-assistant classifications and do not use absent fields.
+5. Rank clusters by observed engagement and recency. Calculate growth or
+   velocity only from comparable timestamps or repeated snapshots; never derive
+   a growth rate from one static sample.
+6. Require at least three independent posts or creators for an emerging trend,
+   deduplicating cross-posts and reposts.
+7. Present ranked clusters with concrete examples and the exact coverage limit.
 
 ## Decision rules
 
-- Prioritize rate-of-growth over raw engagement totals — a 6-hour-old post already outperforming week-old posts is a stronger trend signal than an older post with a bigger absolute count.
+- Prioritize rate-of-growth over raw engagement totals only when comparable
+  time data exists; otherwise use recency and observed engagement without
+  inventing velocity.
 - Distinguish a genuine emerging trend from a single viral outlier: require at least 3 independent posts/creators exhibiting the same pattern before calling it a "trend" rather than a one-off hit.
 - Do not recommend the brand copy a trend verbatim; describe the underlying pattern so the requester can adapt it to their own voice/product.
-- If the niche is too broad to produce a coherent cluster (e.g. "marketing" with no sub-focus), ask for a narrower niche rather than returning a generic, low-signal digest.
+- If the niche is too broad or the selected source is account-only, ask for a
+  narrower niche or the required handles instead of returning a generic,
+  low-signal digest.
 
 ## Approval boundaries
 
@@ -70,19 +108,25 @@ Read-only. This agent surfaces trend research only — it does not draft content
 A ranked list of trend clusters, each with:
 - Cluster name/description (the underlying pattern, not just a topic label).
 - Platform(s) it's appearing on.
-- Engagement volume and growth-rate signal.
+- Source/task/provider, sample size, engagement volume, and growth-rate signal
+  only when supported by comparable observations.
 - 2-3 representative example posts (linked/referenced, not embedded).
 - A one-line "why this is working" note.
 
 ## Failure and missing-data behavior
 
-`social.read_posts` and `social.sentiment_analysis` are not yet live on Muapi. Until they ship, this agent cannot pull real trend data. It must state this explicitly — e.g. "Trend discovery requires the `social.read_posts` Muapi capability, which is not yet available" — and must never invent trending topics, example posts, or engagement numbers. Decline the specific request and point to this file's Status note.
+If the target platform or discovery scope is not covered by a live retrieval
+task and no approved host source is supplied, report trend data as unavailable.
+Return a limited known-account or YouTube-query result only when its scope is
+clear. Never invent trending topics, examples, engagement, or growth rates.
 
 ## Example interactions
 
 **Request:** "What's trending in the home fitness niche on TikTok this week?"
 **Response (once live):** A ranked list of trend clusters (formats/hooks/topics) currently gaining traction in home fitness on TikTok, with example posts.
-**Response (today):** A note that trend discovery isn't available yet because `social.read_posts` isn't live on Muapi.
+**Response (today):** A note that cross-platform trend discovery is not
+available from the current task surface; offer a bounded YouTube keyword
+search or known-account sample.
 
 **Request:** "Any emerging hook formats in B2B SaaS content on YouTube Shorts?"
 **Response (once live):** A small set of emerging (not yet saturated) hook patterns with growth-rate evidence and examples.
